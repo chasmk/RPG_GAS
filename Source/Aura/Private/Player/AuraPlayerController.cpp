@@ -5,11 +5,19 @@
 
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
+#include "Interaction/EnemyInterface.h"
 
 AAuraPlayerController::AAuraPlayerController()
 {
 	//https://docs.unrealengine.com/5.3/en-US/networking-overview-for-unreal-engine/
 	bReplicates = true;
+}
+
+void AAuraPlayerController::PlayerTick(float DeltaTime)
+{
+	Super::PlayerTick(DeltaTime);
+
+	TraceCursor();
 }
 
 void AAuraPlayerController::BeginPlay()
@@ -57,5 +65,32 @@ void AAuraPlayerController::Move(const FInputActionValue& InputActionValue)
 	{
 		ControlledPawn->AddMovementInput(ForwardDirection, InputAxisVector.Y);
 		ControlledPawn->AddMovementInput(RightDirection, InputAxisVector.X);
+	}
+}
+
+void AAuraPlayerController::TraceCursor()
+{
+	FHitResult HitResult;
+	//获取鼠标上的hit结果
+	//GetHitResultUnderCursor(ECC_Visibility, false, HitResult);
+	GetHitResultUnderCursorByChannel(UEngineTypes::ConvertToTraceType(ECC_Visibility), false, HitResult);
+	if (!HitResult.bBlockingHit) return;
+
+	LastActor = CurrentActor;
+	CurrentActor = Cast<IEnemyInterface>(HitResult.GetActor());
+
+	if (!LastActor && !CurrentActor) return;//两个都为空
+	if (!LastActor && CurrentActor)
+	{
+		CurrentActor->HighlightActor();
+	}
+	else if (LastActor && !CurrentActor)
+	{
+		LastActor->UnHighlightActor();
+	}
+	else if (LastActor != CurrentActor)
+	{
+		LastActor->UnHighlightActor();
+		CurrentActor->HighlightActor();
 	}
 }
