@@ -3,9 +3,11 @@
 
 #include "Character/AuraCharacter.h"
 
+#include "AbilitySystemComponent.h"
 #include "Camera/CameraComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
+#include "Player/AuraPlayerState.h"
 
 
 AAuraCharacter::AAuraCharacter()
@@ -31,18 +33,46 @@ AAuraCharacter::AAuraCharacter()
 	bUseControllerRotationYaw = false;
 }
 
+UAbilitySystemComponent* AAuraCharacter::GetAbilitySystemComponent() const
+{
+	return AbilitySystemComponent;
+}
+
 void AAuraCharacter::BeginPlay()
 {
 	Super::BeginPlay();
+	
 }
 
-void AAuraCharacter::Tick(float DeltaTime)
+void AAuraCharacter::PossessedBy(AController* NewController)
 {
-	Super::Tick(DeltaTime);
+	Super::PossessedBy(NewController);
+	InitAbilityActorInfo();
 }
 
-// Called to bind functionality to input
-void AAuraCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
+void AAuraCharacter::OnRep_PlayerState()
 {
-	Super::SetupPlayerInputComponent(PlayerInputComponent);
+	Super::OnRep_PlayerState();
+	InitAbilityActorInfo();
 }
+
+void AAuraCharacter::InitAbilityActorInfo()
+{
+	//获取player state
+	AAuraPlayerState* AuraPlayerState = GetPlayerState<AAuraPlayerState>();
+
+	if (AuraPlayerState)
+	{
+		//赋值
+		AbilitySystemComponent = AuraPlayerState->GetAbilitySystemComponent();
+		AttributeSet = AuraPlayerState->GetAttributeSet();
+		//初始化
+		AbilitySystemComponent->InitAbilityActorInfo(AuraPlayerState, this);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("GAS Initialize Failed, 因为AuraPlayerState获取失败！"))
+	}
+}
+
+
