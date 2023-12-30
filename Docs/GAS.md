@@ -58,3 +58,54 @@
 
 https://docs.unrealengine.com/5.3/en-US/replicate-actor-properties-in-unreal-engine/
 
+# Gameplay Effects是啥
+
+![image-20231230155454144](./assets/image-20231230155454144.png)
+
+![image-20231230155515922](./assets/image-20231230155515922.png)
+
+- 一次角色捡血瓶加血的流程（instant类型）
+
+  - 角色与球体begin overlap， 触发血瓶actor 里的函数
+
+  - 获取角色身上的ASC，然后根据血瓶的GE class创建GESpecHandle(存放管理GE信息)，然后调用`ApplyGameplayEffectSpecToSelf`把GE应用到我们身上
+
+  - apply函数(ASC类)里执行下面这段：（Apply似乎会把）
+
+    - ```c++
+      if (Spec.Def->DurationPolicy == EGameplayEffectDurationType::Instant)
+      	{
+      		if (OurCopyOfSpec->Def->OngoingTagRequirements.IsEmpty())
+      		{
+      			ExecuteGameplayEffect(*OurCopyOfSpec, PredictionKey);
+      		}
+      ```
+
+  - 在`ExecuteGameplayEffect`(ASC类)里执行：
+
+    - ```c++
+      ActiveGameplayEffects.ExecuteActiveEffectsFrom(Spec, PredictionKey);
+      ```
+
+    - 然后在`ExecuteActiveEffectsFrom`(GE类)里执行:
+
+    - ```c++
+      //遍历Modifier
+      for (int32 ModIdx = 0; ModIdx < SpecToUse.Modifiers.Num(); ++ModIdx)
+      	{
+      		const FGameplayModifierInfo& ModDef = SpecToUse.Def->Modifiers[ModIdx];
+      		
+      		FGameplayModifierEvaluatedData EvalData(ModDef.Attribute, ModDef.ModifierOp, SpecToUse.GetModifierMagnitude(ModIdx, true));
+      		ModifierSuccessfullyExecuted |= InternalExecuteMod(SpecToUse, EvalData);
+      	}
+      ```
+
+    - 然后通过`InternalExecuteMod`(GE类)修改AS里的值
+
+    - ```c++
+      ApplyModToAttribute(ModEvalData.Attribute, ModEvalData.ModifierOp, ModEvalData.Magnitude, &ExecuteData);
+      ```
+
+    - `ApplyModToAttribute`(GE类)里面就会计算出new值，并更新AS里的值
+
+    - `SetAttributeBaseValue`(GE类)里更新AS的值

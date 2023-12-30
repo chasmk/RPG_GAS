@@ -8,6 +8,12 @@
 #include "AuraAttributeSet.generated.h"
 
 //该宏可以定义getter和setter函数，省的我们自己定义,见AttributeSet.h
+/**
+ * 定义了以下函数：
+ *	static FGameplayAttribute UMyHealthSet::GetHealthAttribute();
+ *	FORCEINLINE float UMyHealthSet::GetHealth() const;
+ *	FORCEINLINE void UMyHealthSet::SetHealth(float NewVal);
+ *	FORCEINLINE void UMyHealthSet::InitHealth(float NewVal);*/
 #define ATTRIBUTE_ACCESSORS(ClassName, PropertyName) \
 	GAMEPLAYATTRIBUTE_PROPERTY_GETTER(ClassName, PropertyName) \
  	GAMEPLAYATTRIBUTE_VALUE_GETTER(PropertyName) \

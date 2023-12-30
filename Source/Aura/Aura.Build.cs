@@ -15,7 +15,8 @@ public class Aura : ModuleRules
 			"Engine", 
 			"InputCore",
 			"EnhancedInput", //用于增强输入系统
-			"GameplayAbilities" 
+			"GameplayAbilities",
+			"UMG"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[]
