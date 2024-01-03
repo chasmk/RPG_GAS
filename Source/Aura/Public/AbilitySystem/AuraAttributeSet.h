@@ -5,7 +5,37 @@
 #include "CoreMinimal.h"
 #include "AbilitySystemComponent.h"
 #include "AttributeSet.h"
+#include "GameplayEffectExtension.h"
 #include "AuraAttributeSet.generated.h"
+
+USTRUCT(BlueprintType)
+struct FEffectProperties
+{
+	GENERATED_BODY()
+public:
+	FEffectProperties(){}
+	UPROPERTY()
+	FGameplayEffectContextHandle EffectContextHandle;
+	
+	UPROPERTY()
+	TObjectPtr<UAbilitySystemComponent> SourceAsc = nullptr;
+	UPROPERTY()
+	TObjectPtr<AActor> SourceAvatarActor = nullptr;
+	UPROPERTY()
+	TObjectPtr<AController> SourceController = nullptr;
+	UPROPERTY()
+	TObjectPtr<ACharacter> SourceCharacter = nullptr;
+	
+	UPROPERTY()
+	TObjectPtr<UAbilitySystemComponent> TargetAsc = nullptr;
+	UPROPERTY()
+	TObjectPtr<AActor> TargetAvatarActor = nullptr;
+	UPROPERTY()
+	TObjectPtr<AController> TargetController = nullptr;
+	UPROPERTY()
+	TObjectPtr<ACharacter> TargetCharacter = nullptr;
+	
+};
 
 //该宏可以定义getter和setter函数，省的我们自己定义,见AttributeSet.h
 /**
@@ -30,6 +60,8 @@ class AURA_API UAuraAttributeSet : public UAttributeSet
 public:
 	UAuraAttributeSet();
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+	virtual void PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue) override;//做clamp操作
+	virtual void PostGameplayEffectExecute(const FGameplayEffectModCallbackData& Data) override;//收集GE的源与目标信息
 
 	UPROPERTY(BlueprintReadOnly, ReplicatedUsing = OnRep_Health, Category = "Vital Attributes")
 	FGameplayAttributeData Health;
@@ -58,4 +90,8 @@ public:
 
 	UFUNCTION()
 	void OnRep_MaxMana(const FGameplayAttributeData& OldMaxMana) const;
+
+private:
+	//帮助获取PostGameplayEffectExecute中的相关变量
+	void SetEffectProperties(const FGameplayEffectModCallbackData& Data, FEffectProperties& Props) const;
 };

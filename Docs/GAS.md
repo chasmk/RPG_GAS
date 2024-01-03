@@ -54,15 +54,51 @@
 
 <img src=".\assets\image-20231225145136758.png" alt="drawing" width="600" style="float:left"/>
 
+
+
+## 一些成员函数
+
+- PreAttributeChange
+  - ![image-20240102213014987](./assets/image-20240102213014987.png)
+
 # `UE`中的复制
 
 https://docs.unrealengine.com/5.3/en-US/replicate-actor-properties-in-unreal-engine/
 
 # Gameplay Effects是啥
 
+## 介绍
+
 ![image-20231230155454144](./assets/image-20231230155454144.png)
 
 ![image-20231230155515922](./assets/image-20231230155515922.png)
+
+## 几种不同duration policy类型
+
+- ![image-20231231175217002](./assets/image-20231231175217002.png)
+
+## Stack GE
+
+- 注意这里的stack和数据结构里的不太一样
+  - 加入stack是2，代表最多有两个effect可以同时起作用
+- 下面的**source**就是应用GE的ASC，target就是我们的ASC
+
+| Stacking Type       | Description                                                  |
+| ------------------- | ------------------------------------------------------------ |
+| Aggregate by Source | There is a separate instance of stacks per Source `ASC` on the Target. Each Source can apply X amount of stacks. |
+| Aggregate by Target | There is only one instance of stacks on the Target regardless of Source. Each Source can apply a stack up to the shared stack limit. |
+
+- Stack **Duration Refresh Policy**: 这是持续时间的刷新设置
+  - 1：每次申请到stack就刷新持续时间，比如是10s，一个GE到剩5s时又应用了GE，此时时间又刷新成10s
+  - 2 never fresh：从不刷新
+- Stack **Period Reset Policy**：周期时间重置，类似上面的
+- Stack **Expiration Policy**：Stack过期设置
+
+## GEDurationType
+
+- - 
+
+## 读源码
 
 - 一次角色捡血瓶加血的流程（instant类型）
 
@@ -70,42 +106,50 @@ https://docs.unrealengine.com/5.3/en-US/replicate-actor-properties-in-unreal-eng
 
   - 获取角色身上的ASC，然后根据血瓶的GE class创建GESpecHandle(存放管理GE信息)，然后调用`ApplyGameplayEffectSpecToSelf`把GE应用到我们身上
 
-  - apply函数(ASC类)里执行下面这段：（Apply似乎会把）
+    - apply函数(ASC类)里执行下面这段：（Apply似乎会把）
+
+      - ```c++
+        if (Spec.Def->DurationPolicy == EGameplayEffectDurationType::Instant)
+        	{
+        		if (OurCopyOfSpec->Def->OngoingTagRequirements.IsEmpty())
+        		{
+        			ExecuteGameplayEffect(*OurCopyOfSpec, PredictionKey);
+        		}
+        ```
+
+    - 在`ExecuteGameplayEffect`(ASC类)里执行：
+
+      - ```c++
+        ActiveGameplayEffects.ExecuteActiveEffectsFrom(Spec, PredictionKey);
+        ```
+
+      - 然后在`ExecuteActiveEffectsFrom`(GE类)里执行:
+
+      - ```c++
+        //遍历Modifier
+        for (int32 ModIdx = 0; ModIdx < SpecToUse.Modifiers.Num(); ++ModIdx)
+        	{
+        		const FGameplayModifierInfo& ModDef = SpecToUse.Def->Modifiers[ModIdx];
+        		
+        		FGameplayModifierEvaluatedData EvalData(ModDef.Attribute, ModDef.ModifierOp, SpecToUse.GetModifierMagnitude(ModIdx, true));
+        		ModifierSuccessfullyExecuted |= InternalExecuteMod(SpecToUse, EvalData);
+        	}
+        ```
+
+      - 然后通过`InternalExecuteMod`(GE类)修改AS里的值
+
+      - ```c++
+        ApplyModToAttribute(ModEvalData.Attribute, ModEvalData.ModifierOp, ModEvalData.Magnitude, &ExecuteData);
+        ```
+
+      - `ApplyModToAttribute`(GE类)里面就会计算出new值，并更新AS里的值
+
+      - `SetAttributeBaseValue`(GE类)里更新AS的值，注意这里是更新base值
+
+  - 一次角色捡血瓶加血的流程（has duration类型）
 
     - ```c++
-      if (Spec.Def->DurationPolicy == EGameplayEffectDurationType::Instant)
-      	{
-      		if (OurCopyOfSpec->Def->OngoingTagRequirements.IsEmpty())
-      		{
-      			ExecuteGameplayEffect(*OurCopyOfSpec, PredictionKey);
-      		}
+      AppliedEffect = ActiveGameplayEffects.ApplyGameplayEffectSpec(Spec, PredictionKey, bFoundExistingStackableGE);
       ```
 
-  - 在`ExecuteGameplayEffect`(ASC类)里执行：
-
-    - ```c++
-      ActiveGameplayEffects.ExecuteActiveEffectsFrom(Spec, PredictionKey);
-      ```
-
-    - 然后在`ExecuteActiveEffectsFrom`(GE类)里执行:
-
-    - ```c++
-      //遍历Modifier
-      for (int32 ModIdx = 0; ModIdx < SpecToUse.Modifiers.Num(); ++ModIdx)
-      	{
-      		const FGameplayModifierInfo& ModDef = SpecToUse.Def->Modifiers[ModIdx];
-      		
-      		FGameplayModifierEvaluatedData EvalData(ModDef.Attribute, ModDef.ModifierOp, SpecToUse.GetModifierMagnitude(ModIdx, true));
-      		ModifierSuccessfullyExecuted |= InternalExecuteMod(SpecToUse, EvalData);
-      	}
-      ```
-
-    - 然后通过`InternalExecuteMod`(GE类)修改AS里的值
-
-    - ```c++
-      ApplyModToAttribute(ModEvalData.Attribute, ModEvalData.ModifierOp, ModEvalData.Magnitude, &ExecuteData);
-      ```
-
-    - `ApplyModToAttribute`(GE类)里面就会计算出new值，并更新AS里的值
-
-    - `SetAttributeBaseValue`(GE类)里更新AS的值
+    - 里面也是通过set timer来实现
