@@ -4,6 +4,7 @@
 #include "Character/AuraCharacter.h"
 
 #include "AbilitySystemComponent.h"
+#include "AbilitySystem/AuraAbilitySystemComponent.h"
 #include "Camera/CameraComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
@@ -68,13 +69,17 @@ void AAuraCharacter::InitAbilityActorInfo()
 		//赋值
 		AbilitySystemComponent = AuraPlayerState->GetAbilitySystemComponent();
 		AttributeSet = AuraPlayerState->GetAttributeSet();
-		//初始化
+		//初始化Asc
 		AbilitySystemComponent->InitAbilityActorInfo(AuraPlayerState, this);
+		//初始化AuraAsc
+		Cast<UAuraAbilitySystemComponent>(AuraPlayerState->GetAbilitySystemComponent())->AbilityActorInfoSet();
 	}
 	else
 	{
 		UE_LOG(LogTemp, Warning, TEXT("GAS Initialize Failed, 因为AuraPlayerState获取失败！"))
 	}
+
+	
 
 	//通过HUD 初始化Widget和WidgetController
 	if (AAuraPlayerController* PC = Cast<AAuraPlayerController>(GetController()))

@@ -7,6 +7,7 @@
 
 #include "AuraAbilitySystemComponent.generated.h"
 
+DECLARE_MULTICAST_DELEGATE_OneParam(FEffectAssetTagDelegate, const FGameplayTagContainer&/*asset tags*/);
 
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
 class AURA_API UAuraAbilitySystemComponent : public UAbilitySystemComponent
@@ -14,15 +15,16 @@ class AURA_API UAuraAbilitySystemComponent : public UAbilitySystemComponent
 	GENERATED_BODY()
 
 public:
-	// Sets default values for this component's properties
-	UAuraAbilitySystemComponent();
+	//绑定call back的地方
+	void AbilityActorInfoSet();
+	FEffectAssetTagDelegate EffectAssetTagDelegate;//用于广播GE的tags
 
 protected:
-	// Called when the game starts
-	virtual void BeginPlay() override;
+	
+	
+	// FOnGameplayEffectAppliedDelegate 的 callback，当GE apply到这个Asc上时调用
+	void EffectApplied(UAbilitySystemComponent* Asc, const FGameplayEffectSpec& GESpec,
+	                   FActiveGameplayEffectHandle ActiveGEHandle);
 
 public:
-	// Called every frame
-	virtual void TickComponent(float DeltaTime, ELevelTick TickType,
-	                           FActorComponentTickFunction* ThisTickFunction) override;
 };

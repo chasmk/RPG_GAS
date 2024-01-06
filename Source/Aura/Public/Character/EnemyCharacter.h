@@ -17,6 +17,7 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
+	virtual void InitAbilityActorInfo() override;
 
 	//高亮显示
 	virtual void HighlightActor() override;

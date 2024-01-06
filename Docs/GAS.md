@@ -49,17 +49,42 @@
 
 <img src=".\assets\image-20231225144553421.png" alt="drawing" width="600" style="float:left"/>
 
-- 结构长啥样
-  - 和act里面的stats结构类似
+## BaseValue vs CurrentValue
 
-<img src=".\assets\image-20231225145136758.png" alt="drawing" width="600" style="float:left"/>
+- 概念
+
+  - BaseValue是属性的永久值
+  - CurrentValue是BaseValue基础上应用GE临时的更改
+
+- 注意：通常我们把Max值单独作为一个Attribute，它和base和current都不同
+
+- |         是否修改值          | BaseValue | CurrentValue |
+  | :-------------------------: | :-------: | :----------: |
+  |         Instant GE          |     √     |              |
+  |    Duration&Infinite GE     |           |      √       |
+  |        Periodic  GE         |     √     |              |
+  |    PreAttributeChange()     |           |      √       |
+  | PostGameplayEffectExecute() |     √     |              |
+
+## Clamping操作
+
+- `PreAttributeChange`修改**CurrentValue**
+- `PostGameplayEffectExecute`修改**BaseValue**
+
+### PreAttributeChange
+
+- 主要负责AS中在属性修改前对`CurrentValue`的修改，是对CurrentValue做**Clamp**理想的地方
+- 对任何`Attributes`的修改都会触发该函数，不管是Setter还是GE
+- 注意：在这里进行的任何Clamp操作都不会永久更改 ASC 上的Modifier。它只会改变Modifier的query返回值。
+
+### PostGameplayEffectExecute
+
+- 该函数只会在`Instant GE`修改了`BaseValue`后触发
+- **注意**：调用 PostGameplayEffectExecute() 时，属性的更改已经发生，但尚未复制到客户端，因此在此Clamp值不会导致客户端收到两次网络更新。客户端只会在Clamp后收到更新。
 
 
 
-## 一些成员函数
 
-- PreAttributeChange
-  - ![image-20240102213014987](./assets/image-20240102213014987.png)
 
 # `UE`中的复制
 
@@ -153,3 +178,72 @@ https://docs.unrealengine.com/5.3/en-US/replicate-actor-properties-in-unreal-eng
       ```
 
     - 里面也是通过set timer来实现
+
+# ASC
+
+## 读头文件，看主要有哪些功能
+
+- Gameplay Abilities相关
+
+- Attribute Set相关
+
+  - 获取/添加/移除Attribute Set
+  - 是否存在某个AS
+  - get/set GA的cur/base value
+  - apply modify to 某个GA
+
+- Gameplay Effect相关
+
+  - Apply GE to Self/Target 应用GE
+  - Remove AGE 移除GE
+  - 构造make一个GESpec，GEContext
+  - Getter
+    - 获取GE 计数count
+    - 获取stack count
+    - 获取GE durationn
+    - 获取source/target的tags
+  - Time相关
+    - 重新计算start time
+    - 获取start time ，duration
+  - Active GE相关
+    - 更新
+    - 设置level
+
+  - UI相关（）
+    - 获取当前GE的any状态
+
+- callbacks / notifies
+
+- Gameplay tag 相关操作
+
+- System Attributes
+
+- 其它 Helper 函数
+
+- GameplayCues相关
+
+- GameplayAbility相关
+
+  - Ability取消/打断
+
+- Debug
+  - 
+
+- Replication
+  - 设置Rep mode
+  - predict key相关
+  - owner actor是否权威authority
+  - 是否需要复制record montage信息
+  - 复制结束/取消的ability
+  - server待激活的能力列表 TArray
+
+- 可选的RPC client->server
+  - 
+
+- 输入 处理
+  - 用于从输入角度抑制激活能力
+
+- 动画蒙太奇支持
+  - 
+
+- 变量部分

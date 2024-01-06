@@ -25,6 +25,7 @@ protected:
 	virtual void BeginPlay() override;
 	virtual void PossessedBy(AController* NewController) override;
 	virtual void OnRep_PlayerState() override;
+	virtual void InitAbilityActorInfo() override;//初始化GAS相关变量
 	
 
 private:
@@ -33,7 +34,7 @@ private:
 	UPROPERTY(EditAnywhere, Category="Camera")
 	TObjectPtr<UCameraComponent> FollowCamera;
 
-	void InitAbilityActorInfo();//初始化GAS相关变量
+	
 
 public:
 
