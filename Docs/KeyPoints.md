@@ -10,3 +10,10 @@
 - 如何实现高亮？
   - 通过后处理
   - 设置 custom depth stencil value = 特定值（250）
+
+### 接口的使用
+
+比如characterBase类继承一个接口，那么角色类和敌人类都能共享这个接口里的方法
+
+- 例子
+  - 角色和敌人获取level：角色从playerstate里获取，敌人从自己类里获取

@@ -16,3 +16,6 @@
 - ui数值更新流程
   - 通过在delegate上绑定函数，更新的数值依次从ASC->widgetController->Widget
 
+# 属性菜单
+
+![image-20240109214838447](./assets/image-20240109214838447.png)

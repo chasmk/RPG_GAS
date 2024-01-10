@@ -41,6 +41,11 @@ UAbilitySystemComponent* AAuraCharacter::GetAbilitySystemComponent() const
 	return AbilitySystemComponent;
 }
 
+int32 AAuraCharacter::GetPlayerLevel()
+{
+	return CastChecked<AAuraPlayerState>(GetPlayerState())->GetPlayerLevel();
+}
+
 void AAuraCharacter::BeginPlay()
 {
 	Super::BeginPlay();
@@ -79,7 +84,8 @@ void AAuraCharacter::InitAbilityActorInfo()
 		UE_LOG(LogTemp, Warning, TEXT("GAS Initialize Failed, 因为AuraPlayerState获取失败！"))
 	}
 
-	
+	//初始化AS中的属性值
+	InitializeDefaultAttributes();
 
 	//通过HUD 初始化Widget和WidgetController
 	if (AAuraPlayerController* PC = Cast<AAuraPlayerController>(GetController()))

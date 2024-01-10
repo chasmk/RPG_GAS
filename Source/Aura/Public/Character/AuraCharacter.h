@@ -20,7 +20,11 @@ public:
 	
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 	virtual UAttributeSet* GetAttributeSet() const override { return AttributeSet; };
-
+	
+	/** Combat Interface */
+	virtual int32 GetPlayerLevel() override;
+	/** end Combat Interface */
+	
 protected:
 	virtual void BeginPlay() override;
 	virtual void PossessedBy(AController* NewController) override;

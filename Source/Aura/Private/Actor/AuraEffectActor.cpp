@@ -48,7 +48,7 @@ void AAuraEffectActor::ApplyEffectToTarget(AActor* TargetActor, TSubclassOf<UGam
 	//以下功能蓝图里也能做
 	//handle用来管理访问GEContext
 	FGameplayEffectContextHandle GEContextHandle = TargetASC->MakeEffectContext();
-	GEContextHandle.AddSourceObject(this);//??不懂它的作用
+	GEContextHandle.AddSourceObject(this);//??不懂它的作用，MMC有用
 	//handle用来管理访问GESpec（GE的简化版？）
 	const FGameplayEffectSpecHandle GEHandle = TargetASC->MakeOutgoingSpec(GEClass, ActorLevel, GEContextHandle);
 	FActiveGameplayEffectHandle ActiveGameplayEffectHandle = TargetASC->ApplyGameplayEffectSpecToSelf(*GEHandle.Data.Get());//应用GE到自己(ASC)上

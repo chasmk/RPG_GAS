@@ -26,6 +26,11 @@ AEnemyCharacter::AEnemyCharacter()
 	GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
 }
 
+int32 AEnemyCharacter::GetPlayerLevel()
+{
+	return Level;
+}
+
 // Called when the game starts or when spawned
 void AEnemyCharacter::BeginPlay()
 {

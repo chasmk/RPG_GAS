@@ -70,6 +70,7 @@
 
 - `PreAttributeChange`修改**CurrentValue**
 - `PostGameplayEffectExecute`修改**BaseValue**
+- **当没有aggregator时，修改base时也会同步修改current**`// if there is no aggregator set the current value (base == current in this case)`
 
 ### PreAttributeChange
 
@@ -82,7 +83,30 @@
 - 该函数只会在`Instant GE`修改了`BaseValue`后触发
 - **注意**：调用 PostGameplayEffectExecute() 时，属性的更改已经发生，但尚未复制到客户端，因此在此Clamp值不会导致客户端收到两次网络更新。客户端只会在Clamp后收到更新。
 
+## 属性设计
 
+> 分三类 vital primary secondary
+
+- Vital
+  - **Health**
+  - **Mana**
+- Primary
+  - **Strength**
+  - **Intelligence**
+  - **Resilience**
+  - **Vigor**
+- Secondary: 这些属性依赖于某些primary/secondary属性
+  - 这些属性继承自其它属性，使用一个带有`Attribute Based`或MMC 的infinite GE应用，当他依赖的属性更新时它会自动更新。[doc](https://github.com/tranek/GASDocumentation/blob/master/README.md#435-derived-attributes)
+  - [Resilience] **Armor**：减少受到的damage，增加block chance
+  - [Resilience] **ArmorPenetration**：忽视敌人armor百分比，增加crit hit chance
+  - [Armor] **BlockChance**：减去受到damage一半的概率
+  - [ArmorPenetration] **CriticalHitChance**：damage翻倍的概率
+  - ArmorPenetration[] **CriticalHitDamage**：： crit hit触发时增加的bonus damage
+  - [Armor] **CriticalHitResistance**： 减少攻击敌人是的crit hit chance
+  - [Vigor] **HealthRegeneration**：每秒再生的health值
+  - [Intelligence] **ManaRegeneration**：每秒再生的mana值
+  - [Vigor] **MaxHealth**：最大血量
+  - [Intelligence] **MaxMana**：最大法力
 
 
 
@@ -148,9 +172,10 @@ https://docs.unrealengine.com/5.3/en-US/replicate-actor-properties-in-unreal-eng
         ActiveGameplayEffects.ExecuteActiveEffectsFrom(Spec, PredictionKey);
         ```
 
-      - 然后在`ExecuteActiveEffectsFrom`(GE类)里执行:
+      - 然后在`ExecuteActiveEffectsFrom`(GE类)里执行` InternalExecuteMod(SpecToUse, EvalData);`:
 
       - ```c++
+        //These will modify the base value of attributes
         //遍历Modifier
         for (int32 ModIdx = 0; ModIdx < SpecToUse.Modifiers.Num(); ++ModIdx)
         	{
@@ -163,21 +188,150 @@ https://docs.unrealengine.com/5.3/en-US/replicate-actor-properties-in-unreal-eng
 
       - 然后通过`InternalExecuteMod`(GE类)修改AS里的值
 
+        - 这里面会调用**Pre/Post GameplayEffectExecute**
+
       - ```c++
         ApplyModToAttribute(ModEvalData.Attribute, ModEvalData.ModifierOp, ModEvalData.Magnitude, &ExecuteData);
         ```
 
       - `ApplyModToAttribute`(GE类)里面就会计算出new值，并更新AS里的值
 
-      - `SetAttributeBaseValue`(GE类)里更新AS的值，注意这里是更新base值
+      - `SetAttributeBaseValue`(GE类)里更新AS的值，注意这里是**更新base值**
 
-  - 一次角色捡血瓶加血的流程（has duration类型）
+        - **如果没有aggregator，会一起修改current value**
+        - 这里更新NumericalValue时会调用**pre/post AttributeChange**
 
-    - ```c++
-      AppliedEffect = ActiveGameplayEffects.ApplyGameplayEffectSpec(Spec, PredictionKey, bFoundExistingStackableGE);
-      ```
+  - （has duration类型）
 
-    - 里面也是通过set timer来实现
+    - `ApplyGameplayEffectSpecToSelf()`
+
+      - ```c++
+        if (Spec.Def->DurationPolicy != EGameplayEffectDurationType::Instant || bTreatAsInfiniteDuration)
+        {
+        	AppliedEffect = ActiveGameplayEffects.ApplyGameplayEffectSpec(Spec, PredictionKey, bFoundExistingStackableGE);
+        ```
+
+    - `ApplyGameplayEffectSpec(Spec, PredictionKey, bFoundExistingStackableGE);`最后调用下面的函数
+
+      - ```c++
+        InternalOnActiveGameplayEffectAdded(*AppliedActiveGE);
+        ```
+
+    - **CheckOngoingTagRequirements**`Effect.CheckOngoingTagRequirements(OwnerTags, *this);`
+
+    - **AddActiveGameplayEffectGrantedTagsAndModifiers**`OwningContainer.AddActiveGameplayEffectGrantedTagsAndModifiers(*this, bInvokeGameplayCueEvents);`
+
+    - **FindOrCreateAttributeAggregator**`FAggregator* Aggregator = FindOrCreateAttributeAggregator(Effect.Spec.Def->Modifiers[ModIdx].Attribute).Get();`
+      - 这里面给**OnDirty**绑定上callback **OnAttributeAggregatorDirty**
+
+    - **`AddAggregatorMod`**
+
+      - 里面会调用**`BroadcastOnDirty();`**
+
+    - **BroadcastOnDirty()**
+
+      - 会调用下面的callback
+
+      - ```c++
+        void UAbilitySystemComponent::OnAttributeAggregatorDirty(FAggregator* Aggregator, FGameplayAttribute Attribute, bool bFromRecursiveCall)
+        {
+        	ActiveGameplayEffects.OnAttributeAggregatorDirty(Aggregator, Attribute, bFromRecursiveCall);
+        }
+        ```
+
+    - **OnAttributeAggregatorDirty**`void FActiveGameplayEffectsContainer::OnAttributeAggregatorDirty(FAggregator* Aggregator, FGameplayAttribute Attribute, bool bFromRecursiveCall)`
+
+      - ```c++
+        float NewValue = Aggregator->Evaluate(EvaluationParameters);//算出新的currentValue
+        
+        if (EvaluationParameters.IncludePredictiveMods)
+        {
+            ABILITY_LOG(Log, TEXT("After Prediction, FinalValue: %.2f"), NewValue);
+        }
+        
+        InternalUpdateNumericalAttribute(Attribute, NewValue, nullptr, bFromRecursiveCall);
+        ```
+
+    - **InternalUpdateNumericalAttribute**`InternalUpdateNumericalAttribute(Attribute, NewValue, nullptr, bFromRecursiveCall);`
+
+      - ```c++
+        float OldValue = Owner->GetNumericAttribute(Attribute);//获取更改前的CurrentValue
+        Owner->SetNumericAttribute_Internal(Attribute, NewValue);
+        ```
+
+    - **SetNumericAttribute_Internal**`void UAbilitySystemComponent::SetNumericAttribute_Internal`
+
+      - ```c++
+        // Set the attribute directly: update the FProperty on the attribute set.
+        const UAttributeSet* AttributeSet = GetAttributeSubobjectChecked(Attribute.GetAttributeSetClass());
+        Attribute.SetNumericValueChecked(NewFloatValue, const_cast<UAttributeSet*>(AttributeSet));
+        bIsNetDirty = true;
+        ```
+
+    - **SetNumericValueChecked**`void FGameplayAttribute::SetNumericValueChecked`
+
+      - 这里面会调用**`PreAttributeChange`**,并**`SetCurrentValue(NewValue);`**
+
+      - ```c++
+        OldValue = DataPtr->GetCurrentValue();
+        Dest->PreAttributeChange(*this, NewValue);
+        DataPtr->SetCurrentValue(NewValue);
+        Dest->PostAttributeChange(*this, OldValue, NewValue);
+        ```
+
+    - 此时就完成了对CurrentValue的更新
+
+  - 角色进入火焰区域的流程（periodic类型）
+
+    - `ApplyGameplayEffectSpecToSelf()`
+
+      - ```c++
+        if (Spec.Def->DurationPolicy != EGameplayEffectDurationType::Instant || bTreatAsInfiniteDuration)
+        {
+        	AppliedEffect = ActiveGameplayEffects.ApplyGameplayEffectSpec(Spec, PredictionKey, bFoundExistingStackableGE);
+        ```
+
+    - `ApplyGameplayEffectSpec(Spec, PredictionKey, bFoundExistingStackableGE);`
+
+      - 这里面注册timer和 period callback delegate
+
+      - ```c++
+        // Register period callbacks with the timer manager
+        	if (bSetPeriod && Owner && (AppliedEffectSpec.GetPeriod() > UGameplayEffect::NO_PERIOD))
+        	{
+        		FTimerManager& TimerManager = Owner->GetWorld()->GetTimerManager();
+        		FTimerDelegate Delegate = FTimerDelegate::CreateUObject(Owner, &UAbilitySystemComponent::ExecutePeriodicEffect, AppliedActiveGE->Handle);
+        			
+        		// The timer manager moves things from the pending list to the active list after checking the active list on the first tick so we need to execute here
+        		if (AppliedEffectSpec.Def->bExecutePeriodicEffectOnApplication)
+        		{
+        			TimerManager.SetTimerForNextTick(Delegate);
+        		}
+        
+        		TimerManager.SetTimer(AppliedActiveGE->PeriodHandle, Delegate, AppliedEffectSpec.GetPeriod(), true);
+        	}
+        ```
+
+      - 这里timer会定时触发delegate，而delegate上绑定了`UAbilitySystemComponent::ExecutePeriodicEffect`这个函数
+
+    - period时间到了后触发timer的callback `ExecutePeriodicEffect`，这里面执行`ActiveGameplayEffects.ExecutePeriodicGameplayEffect(Handle);`
+
+    - `ExecutePeriodicGameplayEffect(Handle)`，这里面获取ActiveGE，然后执行internal版本
+
+      - ```c++
+        GAMEPLAYEFFECT_SCOPE_LOCK();
+        
+        FActiveGameplayEffect* ActiveEffect = GetActiveGameplayEffect(Handle);
+        
+        if (ActiveEffect != nullptr)
+        {
+            InternalExecutePeriodicGameplayEffect(*ActiveEffect);
+        }
+        ```
+
+    - `InternalExecutePeriodicGameplayEffect(*ActiveEffect);`里面执行`ExecuteActiveEffectsFrom(ActiveEffect.Spec);`
+
+    - `ExecuteActiveEffectsFrom(ActiveEffect.Spec);`又见面了。后面流程和instant GE一样，都是修改base value
 
 # ASC
 

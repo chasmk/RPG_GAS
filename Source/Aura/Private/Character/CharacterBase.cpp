@@ -3,6 +3,8 @@
 
 #include "Character/CharacterBase.h"
 
+#include "AbilitySystemComponent.h"
+
 // Sets default values
 ACharacterBase::ACharacterBase()
 {
@@ -28,4 +30,23 @@ void ACharacterBase::BeginPlay()
 
 void ACharacterBase::InitAbilityActorInfo()
 {
+}
+
+void ACharacterBase::InitializeDefaultAttributes() const
+{
+	check(IsValid(DefaultVitalAttributeGE));
+	check(IsValid(DefaultPrimaryAttributeGE));
+	check(IsValid(DefaultSecondaryAttributeGE));
+	ApplyInitialEffect(DefaultPrimaryAttributeGE, 1.f);
+	ApplyInitialEffect(DefaultSecondaryAttributeGE, 1.f);
+	ApplyInitialEffect(DefaultVitalAttributeGE, 1.f);//放到第一个时有bug，不知道为什么
+}
+
+void ACharacterBase::ApplyInitialEffect(const TSubclassOf<UGameplayEffect> GameplayEffectClass, const float Level) const
+{
+	check(IsValid(GetAbilitySystemComponent()));
+	FGameplayEffectContextHandle ContextHandle = GetAbilitySystemComponent()->MakeEffectContext();
+	ContextHandle.AddSourceObject(this);
+	const FGameplayEffectSpecHandle SpecHandle = GetAbilitySystemComponent()->MakeOutgoingSpec(GameplayEffectClass, Level, ContextHandle);
+	GetAbilitySystemComponent()->ApplyGameplayEffectSpecToTarget(*SpecHandle.Data.Get(), GetAbilitySystemComponent());
 }
