@@ -92,7 +92,7 @@ void AAuraCharacter::InitAbilityActorInfo()
 	{
 		if (AAuraHUD* HUD = Cast<AAuraHUD>(PC->GetHUD()))
 		{
-			HUD->InitOverlay(PC, AuraPlayerState, AbilitySystemComponent, AttributeSet);
+			HUD->InitHUD(PC, AuraPlayerState, AbilitySystemComponent, AttributeSet);
 		}
 	}
 }

@@ -50,6 +50,7 @@ public:
  	GAMEPLAYATTRIBUTE_VALUE_SETTER(PropertyName) \
  	GAMEPLAYATTRIBUTE_VALUE_INITTER(PropertyName)
 
+
 /**
  * 
  */
@@ -63,7 +64,8 @@ public:
 	virtual void PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue) override;//做clamp操作
 	virtual void PostGameplayEffectExecute(const FGameplayEffectModCallbackData& Data) override;//收集GE的源与目标信息
 
-	
+	//这个map存放所有tag到属性getter函数指针的键值对
+	TMap<FGameplayTag, FGameplayAttribute(*)()> Tag2AttrMap;
 	
 	
 	/**

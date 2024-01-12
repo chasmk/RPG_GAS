@@ -19,3 +19,8 @@
 # 属性菜单
 
 ![image-20240109214838447](./assets/image-20240109214838447.png)
+
+#### 如何更新值
+
+以一种modular，sophisticated，robust的方式完成
+

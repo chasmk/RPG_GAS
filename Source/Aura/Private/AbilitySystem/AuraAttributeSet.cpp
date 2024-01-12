@@ -5,13 +5,32 @@
 
 #include "AbilitySystemBlueprintLibrary.h"
 #include "AbilitySystemComponent.h"
+#include "AuraGameplayTag.h"
 #include "GameFramework/Character.h"
 #include "Net/UnrealNetwork.h"
 
 UAuraAttributeSet::UAuraAttributeSet()
 {
-	//InitHealth(50.f);
-	//InitMana(50.f);
+	const FAuraGameplayTags& Tags = FAuraGameplayTags::Get();
+
+	// 主属性
+	Tag2AttrMap.Add(Tags.Tag_Primary_Strength, GetStrengthAttribute);
+	Tag2AttrMap.Add(Tags.Tag_Primary_Intelligence, GetIntelligenceAttribute);
+	Tag2AttrMap.Add(Tags.Tag_Primary_Resilience, GetResilienceAttribute);
+	Tag2AttrMap.Add(Tags.Tag_Primary_Vigor, GetVigorAttribute);
+
+	//副属性
+	Tag2AttrMap.Add(Tags.Tag_Secondary_Armor, GetArmorAttribute);
+	Tag2AttrMap.Add(Tags.Tag_Secondary_ArmorPenetration, GetArmorPenetrationAttribute);
+	Tag2AttrMap.Add(Tags.Tag_Secondary_BlockChance, GetBlockChanceAttribute);
+	Tag2AttrMap.Add(Tags.Tag_Secondary_HealthRegeneration, GetHealthRegenerationAttribute);
+	Tag2AttrMap.Add(Tags.Tag_Secondary_ManaRegeneration, GetManaRegenerationAttribute);
+	Tag2AttrMap.Add(Tags.Tag_Secondary_MaxHealth, GetMaxHealthAttribute);
+	Tag2AttrMap.Add(Tags.Tag_Secondary_MaxMana, GetMaxManaAttribute);
+	Tag2AttrMap.Add(Tags.Tag_Secondary_CriticalHitChance, GetCriticalHitChanceAttribute);
+	Tag2AttrMap.Add(Tags.Tag_Secondary_CriticalHitDamage, GetCriticalHitDamageAttribute);
+	Tag2AttrMap.Add(Tags.Tag_Secondary_CriticalHitResistance, GetCriticalHitResistanceAttribute);
+	
 }
 
 void UAuraAttributeSet::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
