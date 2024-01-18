@@ -32,6 +32,12 @@ void ACharacterBase::InitAbilityActorInfo()
 {
 }
 
+FVector ACharacterBase::GetCombatSocketLocation()
+{
+	if (!IsValid(Weapon)) return FVector();
+	return Weapon->GetSocketLocation(HipSocketName);
+}
+
 void ACharacterBase::InitializeDefaultAttributes() const
 {
 	check(IsValid(DefaultVitalAttributeGE));

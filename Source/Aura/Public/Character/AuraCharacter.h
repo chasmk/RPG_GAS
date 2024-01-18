@@ -7,6 +7,7 @@
 #include "CharacterBase.h"
 #include "AuraCharacter.generated.h"
 
+class UGameplayAbility;
 class UCameraComponent;
 class USpringArmComponent;
 
@@ -27,9 +28,10 @@ public:
 	
 protected:
 	virtual void BeginPlay() override;
-	virtual void PossessedBy(AController* NewController) override;
-	virtual void OnRep_PlayerState() override;
+	virtual void PossessedBy(AController* NewController) override;//server上初始化gas
+	virtual void OnRep_PlayerState() override;//client上初始化gas
 	virtual void InitAbilityActorInfo() override;//初始化GAS相关变量
+	void AddCharacterAbilities() const;//初始化角色初始能力
 	
 
 private:
@@ -38,7 +40,8 @@ private:
 	UPROPERTY(EditAnywhere, Category="Camera")
 	TObjectPtr<UCameraComponent> FollowCamera;
 
-	
+	UPROPERTY(EditAnywhere, Category="Abilities")
+	TArray<TSubclassOf<UGameplayAbility>> StartUpAbilities;
 
 public:
 

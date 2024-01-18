@@ -56,6 +56,7 @@ void AAuraCharacter::PossessedBy(AController* NewController)
 {
 	Super::PossessedBy(NewController);
 	InitAbilityActorInfo();
+	AddCharacterAbilities();//只在server上调用
 }
 
 void AAuraCharacter::OnRep_PlayerState()
@@ -95,6 +96,16 @@ void AAuraCharacter::InitAbilityActorInfo()
 			HUD->InitHUD(PC, AuraPlayerState, AbilitySystemComponent, AttributeSet);
 		}
 	}
+}
+
+void AAuraCharacter::AddCharacterAbilities() const
+{
+	UAuraAbilitySystemComponent* Asc = Cast<UAuraAbilitySystemComponent>(GetAbilitySystemComponent());
+
+	//保证Ga只在server上操作
+	if (!HasAuthority()) return;
+	
+	Asc->AddCharacterAbilities(StartUpAbilities);
 }
 
 

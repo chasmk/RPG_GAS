@@ -25,4 +25,13 @@ void FAuraGameplayTags::InitializeNativeGameplayTags()
 	GameplayTags.Tag_Secondary_ManaRegeneration = UGameplayTagsManager::Get().AddNativeGameplayTag(FName("Attributes.Secondary.ManaRegeneration"),FString("法力恢复速率，/s"));
 	GameplayTags.Tag_Secondary_MaxHealth = UGameplayTagsManager::Get().AddNativeGameplayTag(FName("Attributes.Secondary.MaxHealth"),FString("最大血量"));
 	GameplayTags.Tag_Secondary_MaxMana = UGameplayTagsManager::Get().AddNativeGameplayTag(FName("Attributes.Secondary.MaxMana"),FString("最大法力"));
+
+	GameplayTags.InputTag_LMB = UGameplayTagsManager::Get().AddNativeGameplayTag(FName("Attributes.InputTag.LMB"),FString("Input Tag for Left Mouse Button"));
+	GameplayTags.InputTag_RMB = UGameplayTagsManager::Get().AddNativeGameplayTag(FName("Attributes.InputTag.RMB"),FString("Input Tag for Right Mouse Button"));
+	GameplayTags.InputTag_1 = UGameplayTagsManager::Get().AddNativeGameplayTag(FName("Attributes.InputTag.1"),FString("Input Tag for 1 key"));
+	GameplayTags.InputTag_2 = UGameplayTagsManager::Get().AddNativeGameplayTag(FName("Attributes.InputTag.2"),FString("Input Tag for 2 key"));
+	GameplayTags.InputTag_3 = UGameplayTagsManager::Get().AddNativeGameplayTag(FName("Attributes.InputTag.3"),FString("Input Tag for 3 key"));
+	GameplayTags.InputTag_4 = UGameplayTagsManager::Get().AddNativeGameplayTag(FName("Attributes.InputTag.4"),FString("Input Tag for 4 key"));
+
+
 }

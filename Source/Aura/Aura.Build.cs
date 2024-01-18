@@ -23,7 +23,8 @@ public class Aura : ModuleRules
 		{//以下三个用于GAS
 			//"GameplayAbilities",
 			"GameplayTags",
-			"GameplayTasks"
+			"GameplayTasks",
+			"NavigationSystem"
 		});
 
 		// Uncomment if you are using Slate UI

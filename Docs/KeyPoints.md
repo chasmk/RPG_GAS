@@ -47,3 +47,17 @@
 - 例如根据当前随意一个uobject，就能获取playercontroller，进而获取hud，然后获取其widget controller。
 - 这里还学习到world，world context等等关系，见[《InsideUE4》GamePlay架构（三）WorldContext，GameInstance，Engine](https://zhuanlan.zhihu.com/p/23167068)
 - 
+
+### 鼠标点击移动的实现
+
+- UE topdown 模板的实现：
+  - 单次点击使用`SimpleMoveToLocation` ，这个只有在server上ai控制起作用，有自动寻路功能
+  - 持续按下使用`AddMovementInput`可以在联机下同步，需要常量输入
+- 我们的项目中有联机功能
+  - 必须使用`AddMovementInput`
+  - 每一帧都需要一个direction
+- 根据点击释放时的累计时间判断是点按还是长按
+- 用nav库获得到目标点的路径（源码里最终通过函数指针找到findpath函数，里面使用A*算法）[知乎文章生成导航多边形网格](https://zhuanlan.zhihu.com/p/74537236) ，[知乎文章 Detour寻路 A\*](https://zhuanlan.zhihu.com/p/78873379),    [官方寻路文档](https://docs.unrealengine.com/4.27/zh-CN/InteractiveExperiences/ArtificialIntelligence/NavigationSystem/)
+- 然后把路径上的点加到spline中生成曲线
+- 每一帧都从spline中获取最近的切线direction，然后addmovement（注意在项目设置里把client的nav也打开）
+- 每次获取路径后要更新目标点为路径的最后一个点，因为有的目标点不可达，会出错

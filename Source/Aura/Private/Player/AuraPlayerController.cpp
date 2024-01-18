@@ -3,14 +3,24 @@
 
 #include "Player/AuraPlayerController.h"
 
-#include "EnhancedInputComponent.h"
+#include "AbilitySystemBlueprintLibrary.h"
+#include "AuraGameplayTag.h"
 #include "EnhancedInputSubsystems.h"
+#include "GameplayTagContainer.h"
+#include "NavigationPath.h"
+#include "NavigationSystem.h"
+#include "AbilitySystem/AuraAbilitySystemComponent.h"
+#include "Components/SplineComponent.h"
+#include "Input/AuraInputComponent.h"
 #include "Interaction/EnemyInterface.h"
+#include "Player/AuraPlayerState.h"
 
 AAuraPlayerController::AAuraPlayerController()
 {
 	//https://docs.unrealengine.com/5.3/en-US/networking-overview-for-unreal-engine/
 	bReplicates = true;
+
+	Spline = CreateDefaultSubobject<USplineComponent>("Spline");
 }
 
 void AAuraPlayerController::PlayerTick(float DeltaTime)
@@ -18,6 +28,7 @@ void AAuraPlayerController::PlayerTick(float DeltaTime)
 	Super::PlayerTick(DeltaTime);
 
 	TraceCursor();
+	AutoRun();
 }
 
 void AAuraPlayerController::BeginPlay()
@@ -49,10 +60,15 @@ void AAuraPlayerController::BeginPlay()
 void AAuraPlayerController::SetupInputComponent()
 {
 	Super::SetupInputComponent();
-	//把输入组件强制转换为增强版, 这个类可以在项目设置->input里设置
-	UEnhancedInputComponent* EnhancedInputComponent = CastChecked<UEnhancedInputComponent>(InputComponent);
+
+	//把输入组件强制转换为aura版, 这个类可以在项目设置->input里设置
+	UAuraInputComponent* AuraInputComponent = CastChecked<UAuraInputComponent>(InputComponent);
+
 	//在action上绑定函数，每次trigger时都会调用这个函数
-	EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &AAuraPlayerController::Move);
+	AuraInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &AAuraPlayerController::Move);
+	//自定义的绑定函数
+	AuraInputComponent->BindAbilityActions(InputConfig, this, &ThisClass::AbilityInputTagPressed,
+	                                       &ThisClass::AbilityInputTagReleased, &ThisClass::AbilityInputTagHeld);
 }
 
 void AAuraPlayerController::Move(const FInputActionValue& InputActionValue)
@@ -72,14 +88,13 @@ void AAuraPlayerController::Move(const FInputActionValue& InputActionValue)
 
 void AAuraPlayerController::TraceCursor()
 {
-	FHitResult HitResult;
 	//获取鼠标上的hit结果
 	//GetHitResultUnderCursor(ECC_Visibility, false, HitResult);
-	GetHitResultUnderCursorByChannel(UEngineTypes::ConvertToTraceType(ECC_Visibility), false, HitResult);
-	if (!HitResult.bBlockingHit) return;
+	GetHitResultUnderCursorByChannel(UEngineTypes::ConvertToTraceType(ECC_Visibility), false, CursorHitResult);
+	if (!CursorHitResult.bBlockingHit) return;
 
 	LastActor = CurrentActor;
-	CurrentActor = Cast<IEnemyInterface>(HitResult.GetActor());
+	CurrentActor = Cast<IEnemyInterface>(CursorHitResult.GetActor());
 
 	if (!LastActor && !CurrentActor) return; //两个都为空
 	if (!LastActor && CurrentActor)
@@ -95,4 +110,127 @@ void AAuraPlayerController::TraceCursor()
 		LastActor->UnHighlightActor();
 		CurrentActor->HighlightActor();
 	}
+}
+
+void AAuraPlayerController::AutoRun()
+{
+	if (!bAutoRunning) return;
+	if (APawn* ControlledPawn = GetPawn())
+	{
+		//用现成函数获取direction (应该是切线方向)
+		const FVector LocationOnSpline = Spline->FindLocationClosestToWorldLocation(ControlledPawn->GetActorLocation(), ESplineCoordinateSpace::World);
+		const FVector Direction = Spline->FindDirectionClosestToWorldLocation(LocationOnSpline, ESplineCoordinateSpace::World);
+
+		DrawDebugDirectionalArrow(GetWorld(), ControlledPawn->GetActorLocation(),
+		                          ControlledPawn->GetActorLocation() + Direction * 10, 20.f, FColor::Red, false, 2.f);
+
+		ControlledPawn->AddMovementInput(Direction);
+
+		//阈值范围内停止自动移动
+		const float DistanceToDestination = (LocationOnSpline - CachedDestination).Length();
+		if (DistanceToDestination <= AutoRunAcceptanceRadius)
+		{
+			bAutoRunning = false;
+		}
+	}
+}
+
+void AAuraPlayerController::AbilityInputTagPressed(FGameplayTag InputTag)
+{
+	//GEngine->AddOnScreenDebugMessage(1, 3.f, FColor::Red, *InputTag.ToString());
+	if (InputTag.MatchesTagExact(FAuraGameplayTags::Get().InputTag_LMB))
+	{
+		bTargeting = CurrentActor ? true : false; //鼠标在敌人身上时为true
+		bAutoRunning = false;
+	}
+}
+
+void AAuraPlayerController::AbilityInputTagReleased(FGameplayTag InputTag)
+{
+	//GEngine->AddOnScreenDebugMessage(2, 3.f, FColor::Blue, *InputTag.ToString());
+	if (!InputTag.MatchesTagExact(FAuraGameplayTags::Get().InputTag_LMB)) //非鼠标左键
+	{
+		if (GetAsc())
+		{
+			GetAsc()->AbilityInputTagReleased(InputTag);
+		}
+		return;
+	}
+	if (bTargeting)
+	{
+		if (GetAsc())
+		{
+			GetAsc()->AbilityInputTagReleased(InputTag);
+		}
+	}
+	else
+	{
+		APawn* ControlledPawn = GetPawn();
+		if (FollowTime <= ShortPressThreshold && ControlledPawn) //小于阈值，说明是点按
+		{
+			if (UNavigationPath* NavPath = UNavigationSystemV1::FindPathToLocationSynchronously(
+				this, ControlledPawn->GetActorLocation(), CachedDestination))
+			{
+				//调用寻路算法找到一条路径
+				Spline->ClearSplinePoints();
+				for (const FVector& PointLoc : NavPath->PathPoints)
+				{
+					//把路径上的点加到spline中
+					Spline->AddSplinePoint(PointLoc, ESplineCoordinateSpace::World);
+					DrawDebugSphere(GetWorld(), PointLoc, 8.f, 8, FColor::Green, false, 5.f);
+				}
+				if (NavPath->PathPoints.Num() > 0)
+				{
+					//更新目标点为生成路径的最后一个点，避免原始目标点不可达导致乱跑的问题
+					CachedDestination = NavPath->PathPoints[NavPath->PathPoints.Num() - 1];
+				}
+				bAutoRunning = true; //让角色自动走到目的地
+			}
+		}
+		FollowTime = 0.f;
+		bTargeting = false;
+	}
+}
+
+void AAuraPlayerController::AbilityInputTagHeld(FGameplayTag InputTag)
+{
+	//GEngine->AddOnScreenDebugMessage(3, 3.f, FColor::Green, *InputTag.ToString());
+	if (!InputTag.MatchesTagExact(FAuraGameplayTags::Get().InputTag_LMB)) //非鼠标左键
+	{
+		if (GetAsc())
+		{
+			GetAsc()->AbilityInputTagHeld(InputTag);
+		}
+		return;
+	}
+	if (bTargeting)
+	{
+		if (GetAsc())
+		{
+			GetAsc()->AbilityInputTagHeld(InputTag);
+		}
+	}
+	else //点击移动的逻辑
+	{
+		FollowTime += GetWorld()->GetDeltaSeconds();
+		if (CursorHitResult.bBlockingHit)
+		{
+			CachedDestination = CursorHitResult.ImpactPoint;
+		}
+		if (APawn* ControlledPawn = GetPawn())
+		{
+			const FVector WorldDirection = (CachedDestination - ControlledPawn->GetActorLocation()).GetSafeNormal();
+			ControlledPawn->AddMovementInput(WorldDirection);
+		}
+	}
+}
+
+UAuraAbilitySystemComponent* AAuraPlayerController::GetAsc()
+{
+	if (AuraAbilitySystemComponent == nullptr)
+	{
+		AuraAbilitySystemComponent = Cast<UAuraAbilitySystemComponent>(
+			GetPlayerState<AAuraPlayerState>()->GetAbilitySystemComponent());
+	}
+	return AuraAbilitySystemComponent;
 }

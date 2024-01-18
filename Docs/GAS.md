@@ -1,3 +1,11 @@
+# 一些文档博客
+
+- [官方回答的8个问题](https://epicgames.ent.box.com/s/m1egifkxv3he3u3xezb9hzbgroxyhx89)
+
+- [github GAS文档](https://github.com/tranek/GASDocumentation/blob/master/README.md)
+
+
+
 # GAS是啥？
 
 - 全称 `Gameplay Ability System`。处理Attribute和Ability
@@ -401,3 +409,36 @@ https://docs.unrealengine.com/5.3/en-US/replicate-actor-properties-in-unreal-eng
   - 
 
 - 变量部分
+
+# GA
+
+- Gameplay Abilities
+  - 定义技能/能力的类
+  - 必须被granted
+    - 在**server**上授权
+    - Spec复制到客户端上
+  - 使用前必须激活Activated
+  - 有cost和cooldown
+  - Abilities异步执行
+    - 同一时间有多个active
+- Ability Task
+  - 异步执行的操作
+  - 
+
+- 我们不使用的东西
+  - ![image-20240112220949323](./assets/image-20240112220949323.png)
+
+- Input 与 GA 绑定
+  - 数据驱动
+  - 可以在运行时改变input和ability映射
+
+![image-20240115164631950](./assets/image-20240115164631950.png)
+
+
+
+
+
+
+
+
+
