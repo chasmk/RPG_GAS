@@ -12,16 +12,27 @@ void UAuraProjectileSpell::ActivateAbility(const FGameplayAbilitySpecHandle Hand
                                            const FGameplayEventData* TriggerEventData)
 {
 	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
+	
+	
+}
 
-	if (!HasAuthority(&ActivationInfo)) return;
+void UAuraProjectileSpell::SpawnActor(const FVector& TargetLocation)
+{
+	if (!GetAvatarActorFromActorInfo()->HasAuthority()) return;
 
 	ICombatInterface* CombatInterface = Cast<ICombatInterface>(GetAvatarActorFromActorInfo());//这里avatar是角色类
 	if (CombatInterface)
 	{
+		const FVector SourceLocation = CombatInterface->GetCombatSocketLocation();
+		const FRotator TargetRotator = (TargetLocation - SourceLocation).Rotation();
+		/*notify触发后再生成*/
 		FTransform Transform;
-		Transform.SetLocation(CombatInterface->GetCombatSocketLocation());
+		Transform.SetLocation(SourceLocation);
+		Transform.SetRotation(TargetRotator.Quaternion());
 		//DrawDebugBox(GetWorld(), Transform.GetLocation(), FVector(100), FColor::Red, true);
-		AAuraProjectile* Projectile = GetWorld()->SpawnActorDeferred<AAuraProjectile>(
+
+		
+		 AAuraProjectile* Projectile = GetWorld()->SpawnActorDeferred<AAuraProjectile>(
 			ProjectileSpellClass,
 			Transform,
 			GetOwningActorFromActorInfo(),
@@ -33,5 +44,4 @@ void UAuraProjectileSpell::ActivateAbility(const FGameplayAbilitySpecHandle Hand
 		
 		Projectile->FinishSpawning(Transform);
 	}
-	
 }

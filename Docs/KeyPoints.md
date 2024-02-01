@@ -61,3 +61,72 @@
 - 然后把路径上的点加到spline中生成曲线
 - 每一帧都从spline中获取最近的切线direction，然后addmovement（注意在项目设置里把client的nav也打开）
 - 每次获取路径后要更新目标点为路径的最后一个点，因为有的目标点不可达，会出错
+
+### CS两端角色向敌人发送火球的实现
+
+- 首先在**角色类初始化GAS相关变量**时调用**`GiveAbility()`**把**GA_FireBolt**添加到`ASC`的`ActivatableAbilities`列表并添加tag到`DynamicAbilityTags`这个tag容器里
+  - 我们在**服务端**授予`GameplayAbility`, 之后其会**自动同步**[GameplayAbilitySpec](https://github.com/BillEliot/GASDocumentation_Chinese/blob/main/README.md#concepts-ga-spec)到所属(Owning)客户端, 其他客户端/Simulated proxy不会接受到`GameplayAbilitySpec`.
+- 客户端玩家鼠标左键点击敌人，触发**PC**中的callback  `AbilityInputTagHeld(FGameplayTag InputTag)`（trigger时触发）
+- 该函数里调用ASC里的`AbilityInputTagHeld(InputTag);`函数，该函数找到asc中所有**可激活的GA**，如果和inputTag匹配，则调用`TryActivateAbility(AbilitySpec.Handle);`
+- 这时会尝试**激活GA**（并同步到远程server/local），然后GA类里的ActivateAbility会调用，我们在蓝图里接着执行**GT类**`TargetDataUnderMouse`中定义的函数`TargetDataUnderMouse(UGameplayAbility* OwningAbility);`
+- 该函数会**创建一个Task实例**，该覆盖的Activate函数里，（这里就是把客户端的命中位置同步到server，但没太看懂）
+  - 对于client：调用`SendMouseCursorData();`该函数获取鼠标hit信息，用TargetData保存hitResult，然后调用ASC里的serevr RPC函数`ServerSetReplicatedTargetData()`把TargetData同步到server
+  - 对于server：向自带的TargetDataSet委托绑定callback函数`OnTargetDataReplicatedCallback()`，然后手动广播这个TargetDataSet delegate。该callback
+- 之后，我们在GA里根据GT同步得到的Target位置。生成一个projectile实例，即火球，飞向目标
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
